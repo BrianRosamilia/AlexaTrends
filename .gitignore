@@ -1,0 +1,17 @@
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+npm-debug.log
+node_modules
+
+.DS_Store
+
+# PROJECT SPECIFIC
+dist
+default.json
+.idea
+dist
