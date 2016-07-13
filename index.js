@@ -5,7 +5,7 @@ let requestify = require('requestify');
 
 app.launch(function (request, response) {
     //response.say('<speak>Here are todays trending topics <break time="5s"/></speak>');
-    response.say('Here are todays trending topics');
+    response.say('<speak>Here are todays trending topics<break time="1s"/>');
 
     ProcessRequest('all', response);
 
@@ -17,7 +17,8 @@ app.intent('getTrendsByCategory',
     function (request, response) {
         var category = request.slot('category');
 
-        response.say(`Trending in ${category}`);
+        console.log(typeof response.response.response.outputSpeech);
+        response.say(`<speak>Trending in ${category}<break time="1s"/>`);
 
         ProcessRequest(category, response);
 
@@ -40,13 +41,17 @@ function ProcessRequest(category, awsResponse) {
             return x.title.split(',')[0]
         });
 
-        updateSpeech.splice(7, 0, 'and');
+        updateSpeech.splice(updateSpeech.length-1, 0, 'and <break time="500ms"/>');
         console.log('Speaking', updateSpeech);
         awsResponse.say(updateSpeech);
     }).catch(function (e) {
         console.log(e);
         awsResponse.say('Sorry, something bad happened');
     }).finally(function(){
+        awsResponse.say('</speak>');
+        awsResponse.response.response.outputSpeech.type = 'SSML';
+        awsResponse.response.response.outputSpeech.ssml = awsResponse.response.response.outputSpeech.text;
+
         awsResponse.send();
     });
 }
