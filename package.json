@@ -6,9 +6,11 @@
   "scripts": {},
   "dependencies": {
     "alexa-app": "2.2.0",
-    "config": "1.16.0",
-    "google-trends-api": "^1.2.4",
-    "requestify": "^0.1.17"
+    "alexa-app-server": "^2.2.4",
+    "bluebird": "^3.4.1",
+    "config": "^1.16.0",
+    "redis": "^2.6.2",
+    "request-promise": "^4.0.0"
   },
   "devDependencies": {
     "aws-sdk": "latest",
