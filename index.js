@@ -1,13 +1,13 @@
 "use strict";
 let alexa = require('alexa-app');
 let app = new alexa.app();
-let request = require('request-promise');
 let redis = require('redis');
 let promise = require('bluebird');
-// promise.config({
-//     longStackTraces: false,
-//     warnings: false
-// });
+let requestify = require('requestify');
+promise.config({
+    longStackTraces: false,
+    warnings: false
+});
 let config = require('config').get('Amazon');
 
 promise.promisifyAll(redis.RedisClient.prototype);
@@ -27,7 +27,7 @@ app.intent('getTrendsByCategory',
         var category = request.slot('category');
         let categoryParam = mapCategoryToParam(category);
 
-        if(categoryParam == 'help'){
+        if (categoryParam == 'help') {
             response.say('<speak>Try asking trends about technology, business, health, or sports.  Or you can just say "alexa <break time="200ms"/>trends');
             return renderResponse(response);
         }
@@ -46,50 +46,54 @@ app.error = function (exception, request, response) {
 };
 
 function ProcessRequest(categoryParam, awsResponse) {
-    // let client = redis.createClient({ host : config.redis, port : config.redisPort, connect_timeout : 2000 });
-    //
-    // client.on("error", function (err) {
-    //     console.log("Redis Client error " + err);
-    // });
-    //
-    // client.setAsync(['ttl key', 'ttl val']).then(function(){
-    //     console.log('key set');
-    // }).then(function(){
-    //     console.log('enter requestify');
-    //     return
-    request({ uri: `https://www.google.com/trends/api/stories/latest?hl=en-US&cat=${categoryParam}&fi=15&fs=15&geo=US&ri=300&rs=8&sort=0&tz=240`})
-        .then(function (response) {
-            console.log('requestify response received');
-            var responseText = spliceSlice(response.getBody(), 0, 4);
-            var responseJSON = JSON.parse(responseText);
-            let updateSpeech = responseJSON.storySummaries.trendingStories.map(function (x) {
-                return x.title.split(',')[0]
-            });
+    let client = redis.createClient({ url : config.redis, connect_timeout : 2000 });
 
-            updateSpeech.splice(updateSpeech.length-1, 0, 'and <break time="500ms"/>');
-            console.log('Speaking', updateSpeech);
-            awsResponse.say(updateSpeech);
-        // })
-    }).then(function(){
-        console.log('finish requestify');
+    client.on("error", function (err) {
+        console.log("Redis Client error " + err);
+    });
+
+    client.getAsync([categoryParam]).then(function(cachedTrends){
+        if(cachedTrends != null){
+            console.log('cache hit');
+            awsResponse.say(cachedTrends);
+        }else {
+            return requestify.get(`https://www.google.com/trends/api/stories/latest?hl=en-US&cat=${categoryParam}&fi=15&fs=15&geo=US&ri=300&rs=8&sort=0&tz=240`).then(function (response) {
+                var responseText = spliceSlice(response.getBody(), 0, 4);
+                var responseJSON = JSON.parse(responseText);
+                let listOfTrends = responseJSON.storySummaries.trendingStories.map(function (x) {
+                    return x.title.split(',')[0]
+                });
+
+                listOfTrends.splice(listOfTrends.length - 1, 0, 'and <break time="300ms"/>');
+                console.log('Speaking', listOfTrends);
+                awsResponse.say(listOfTrends);
+
+                return client.setAsync([categoryParam, listOfTrends]).then(function () {
+                    console.log('key set');
+                    return client.expireAsync([categoryParam, '600']).then(function () {
+                        console.log('cache primed');
+                    });
+                });
+            });
+        }
     }).catch(function (e) {
         console.log(e);
         awsResponse.say('Sorry, something bad happened while getting trends');
         renderResponse(awsResponse);
-    }).finally(function(){
+    }).finally(function () {
         renderResponse(awsResponse);
     });
 }
 
-function renderResponse(awsResponse){
+function renderResponse(awsResponse) {
     awsResponse.say('</speak>');
     awsResponse.response.response.outputSpeech.type = 'SSML';
     awsResponse.response.response.outputSpeech.ssml = awsResponse.response.response.outputSpeech.text;
     awsResponse.send();
 }
 
-function mapCategoryToParam(word){
-    switch(word.toLowerCase()){
+function mapCategoryToParam(word) {
+    switch (word.toLowerCase()) {
         case 'technology' :
             return 't';
         case 'business' :

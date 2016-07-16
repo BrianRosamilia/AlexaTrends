@@ -10,7 +10,7 @@
     "bluebird": "^3.4.1",
     "config": "^1.16.0",
     "redis": "^2.6.2",
-    "request-promise": "^4.0.0"
+    "requestify": "^0.1.17"
   },
   "devDependencies": {
     "aws-sdk": "latest",
