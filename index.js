@@ -54,7 +54,7 @@ function ProcessRequest(categoryParam, awsResponse) {
 
     client.getAsync([categoryParam]).then(function(cachedTrends){
         if(cachedTrends != null){
-            console.log('cache hit');
+            console.log(`cache hit for ${categoryParam}`);
             awsResponse.say(cachedTrends);
         }else {
             return requestify.get(`https://www.google.com/trends/api/stories/latest?hl=en-US&cat=${categoryParam}&fi=15&fs=15&geo=US&ri=300&rs=8&sort=0&tz=240`).then(function (response) {
@@ -69,9 +69,8 @@ function ProcessRequest(categoryParam, awsResponse) {
                 awsResponse.say(listOfTrends);
 
                 return client.setAsync([categoryParam, listOfTrends]).then(function () {
-                    console.log('key set');
                     return client.expireAsync([categoryParam, '600']).then(function () {
-                        console.log('cache primed');
+                        console.log(`cache primed for ${categoryParam}`);
                     });
                 });
             });
